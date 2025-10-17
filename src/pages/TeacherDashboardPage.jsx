@@ -9,6 +9,7 @@ import { isTokenExpired } from "../utils/token";
 import { useNavigate } from "react-router-dom";
 import { fetchStudents, registerStudent } from "../api/students";
 import { getStudentByQR, awardPointsToStudent } from "../api/qrScanning";
+import { fetchTeacherStats, fetchRecentTransactions } from "../api/teacherStats";
 
 // Component imports
 import FloatingIcon from '../components/FloatingIcon';
@@ -20,9 +21,10 @@ import RegisterStudentModal from '../components/RegisterStudentModal';
 import AwardPointsModal from '../components/AwardPointsModal';
 import QRScannerModal from '../components/QRScannerModal';
 
+
 const TeacherDashboardPage = () => {
   const navigate = useNavigate();
-  
+
   useEffect(() => {
     const token = localStorage.getItem("access_token");
     if (!token || isTokenExpired(token)) {
@@ -31,15 +33,67 @@ const TeacherDashboardPage = () => {
   }, [navigate]);
 
   const [currentTeacher, setCurrentTeacher] = useState({
-    username: 'MrsJohnson',
-    firstName: 'Sarah',
-    lastName: 'Johnson',
-    totalStudents: 24,
-    activeStudents: 22,
-    totalPointsAwarded: 15750,
-    thisWeekPoints: 890,
-    averageStudentBalance: 425
+    username: '',
+    firstName: '',
+    lastName: '',
+    totalStudents: 0,
+    activeStudents: 0,
+    totalPointsAwarded: 0,
+    thisWeekPoints: 0,
+    averageStudentBalance: 0
   });
+
+  // 3️⃣ ADD these new state variables after currentTeacher:
+  const [trends, setTrends] = useState({
+    activeStudents: 0,
+    pointsAwarded: 0,
+    thisWeekPoints: 0,
+    averageBalance: 0
+  });
+  const [isLoadingStats, setIsLoadingStats] = useState(true);
+
+  // 4️⃣ ADD this new useEffect after your existing "Load students" useEffect (around line 75):
+  useEffect(() => {
+    const loadTeacherStats = async () => {
+      try {
+        setIsLoadingStats(true);
+        const data = await fetchTeacherStats();
+
+        setCurrentTeacher({
+          username: data.teacher.username,
+          firstName: data.teacher.firstName,
+          lastName: data.teacher.lastName,
+          totalStudents: data.stats.totalStudents,
+          activeStudents: data.stats.activeStudents,
+          totalPointsAwarded: data.stats.totalPointsAwarded,
+          thisWeekPoints: data.stats.thisWeekPoints,
+          averageStudentBalance: data.stats.averageStudentBalance
+        });
+
+        setTrends(data.trends);
+      } catch (error) {
+        console.error("Failed to fetch teacher stats:", error);
+      } finally {
+        setIsLoadingStats(false);
+      }
+    };
+
+    loadTeacherStats();
+  }, []);
+
+  // 5️⃣ ADD this new useEffect to load recent transactions:
+  useEffect(() => {
+    const loadRecentTransactions = async () => {
+      try {
+        const transactions = await fetchRecentTransactions(10);
+        setRecentTransactions(transactions);
+      } catch (error) {
+        console.error("Failed to fetch recent transactions:", error);
+      }
+    };
+
+    loadRecentTransactions();
+  }, []);
 
   const [students, setStudents] = useState([]);
   const [recentTransactions, setRecentTransactions] = useState([]);
@@ -93,35 +147,36 @@ const TeacherDashboardPage = () => {
   // Handle QR scan - fetch student data from backend
   const handleQRScan = async (qrValue) => {
     console.log("📦 QR Code scanned:", qrValue);
-    
+
     try {
       const studentData = await getStudentByQR(qrValue);
       console.log("✅ Student data received:", studentData);
-      
+
       // Set the student for the award modal
       setSelectedStudent(studentData);
-      
+
       // Close QR scanner
       setShowQRScanner(false);
-      
+
     } catch (error) {
       console.error("❌ Error fetching student:", error);
-      
+
       const errorMessage = error.response?.data?.error || 'Failed to fetch student data';
       alert(`Error: ${errorMessage}`);
-      
+
       // Keep QR scanner open so they can try again
     }
   };
 
   // Handle awarding points - send to backend
+  // 6️⃣ UPDATE the awardPoints function (around line 122-175) - add this code after the success block:
   const awardPoints = async () => {
     if (!selectedStudent || !pointsToAward || !awardReason) {
       alert('Please fill in all fields');
       return;
     }
 
-    if (isAwarding) return; // Prevent double submission
+    if (isAwarding) return;
 
     setIsAwarding(true);
 
@@ -151,14 +206,21 @@ const TeacherDashboardPage = () => {
         timestamp: 'Just now',
         teacherAction: true
       };
-      setRecentTransactions(prev => [newTransaction, ...prev.slice(0, 4)]);
+      setRecentTransactions(prev => [newTransaction, ...prev.slice(0, 9)]);
 
-      // Update teacher stats
-      setCurrentTeacher(prev => ({
-        ...prev,
-        totalPointsAwarded: prev.totalPointsAwarded + pointsToAward,
-        thisWeekPoints: prev.thisWeekPoints + pointsToAward
-      }));
+      // 🆕 ADD THIS: Refresh teacher stats from backend
+      try {
+        const statsData = await fetchTeacherStats();
+        setCurrentTeacher({
+          ...currentTeacher,
+          totalPointsAwarded: statsData.stats.totalPointsAwarded,
+          thisWeekPoints: statsData.stats.thisWeekPoints,
+          averageStudentBalance: statsData.stats.averageStudentBalance
+        });
+        setTrends(statsData.trends);
+      } catch (statsError) {
+        console.error("Failed to refresh stats:", statsError);
+      }
 
       // Reset form and close modal
       setSelectedStudent(null);
@@ -169,7 +231,7 @@ const TeacherDashboardPage = () => {
 
     } catch (error) {
       console.error("❌ Error awarding points:", error);
-      
+
       const errorMessage = error.response?.data?.error || 'Failed to award points';
       alert(`Error: ${errorMessage}`);
     } finally {
@@ -285,41 +347,41 @@ const TeacherDashboardPage = () => {
           </div>
         </header>
 
-        {/* Stats Overview */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-          <StatCard
-            icon={Users}
-            title="Active Students"
-            value={`${currentTeacher.activeStudents}/${currentTeacher.totalStudents}`}
-            subtitle="This week"
-            color="bg-gradient-to-br from-blue-500 to-cyan-600"
-            trend={8}
-          />
-          <StatCard
-            icon={Coins}
-            title="Points Awarded"
-            value={currentTeacher.totalPointsAwarded.toLocaleString()}
-            subtitle="All time"
-            color="bg-gradient-to-br from-green-500 to-emerald-600"
-            trend={12}
-          />
-          <StatCard
-            icon={TrendingUp}
-            title="This Week"
-            value={currentTeacher.thisWeekPoints}
-            subtitle="Points given"
-            color="bg-gradient-to-br from-purple-500 to-violet-600"
-            trend={5}
-          />
-          <StatCard
-            icon={BarChart3}
-            title="Avg Balance"
-            value={currentTeacher.averageStudentBalance}
-            subtitle="Per student"
-            color="bg-gradient-to-br from-orange-500 to-red-500"
-            trend={-2}
-          />
-        </div>
+       // To:
+        <StatCard
+          icon={Users}
+          title="Active Students"
+          value={isLoadingStats ? "..." : `${currentTeacher.activeStudents}/${currentTeacher.totalStudents}`}
+          subtitle="This week"
+          color="bg-gradient-to-br from-blue-500 to-cyan-600"
+          trend={trends.activeStudents}
+        />
+
+// 8️⃣ UPDATE all 4 StatCard components with loading state and real trends:
+        <StatCard
+          icon={Coins}
+          title="Points Awarded"
+          value={isLoadingStats ? "..." : currentTeacher.totalPointsAwarded.toLocaleString()}
+          subtitle="All time"
+          color="bg-gradient-to-br from-green-500 to-emerald-600"
+          trend={trends.pointsAwarded}
+        />
+        <StatCard
+          icon={TrendingUp}
+          title="This Week"
+          value={isLoadingStats ? "..." : currentTeacher.thisWeekPoints}
+          subtitle="Points given"
+          color="bg-gradient-to-br from-purple-500 to-violet-600"
+          trend={trends.thisWeekPoints}
+        />
+        <StatCard
+          icon={BarChart3}
+          title="Avg Balance"
+          value={isLoadingStats ? "..." : currentTeacher.averageStudentBalance}
+          subtitle="Per student"
+          color="bg-gradient-to-br from-orange-500 to-red-500"
+          trend={trends.averageBalance}
+        />
 
         {/* Quick Actions */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
