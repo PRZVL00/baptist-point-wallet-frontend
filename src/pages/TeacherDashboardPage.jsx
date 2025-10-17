@@ -347,41 +347,41 @@ const TeacherDashboardPage = () => {
           </div>
         </header>
 
-       // To:
-        <StatCard
-          icon={Users}
-          title="Active Students"
-          value={isLoadingStats ? "..." : `${currentTeacher.activeStudents}/${currentTeacher.totalStudents}`}
-          subtitle="This week"
-          color="bg-gradient-to-br from-blue-500 to-cyan-600"
-          trend={trends.activeStudents}
-        />
-
-// 8️⃣ UPDATE all 4 StatCard components with loading state and real trends:
-        <StatCard
-          icon={Coins}
-          title="Points Awarded"
-          value={isLoadingStats ? "..." : currentTeacher.totalPointsAwarded.toLocaleString()}
-          subtitle="All time"
-          color="bg-gradient-to-br from-green-500 to-emerald-600"
-          trend={trends.pointsAwarded}
-        />
-        <StatCard
-          icon={TrendingUp}
-          title="This Week"
-          value={isLoadingStats ? "..." : currentTeacher.thisWeekPoints}
-          subtitle="Points given"
-          color="bg-gradient-to-br from-purple-500 to-violet-600"
-          trend={trends.thisWeekPoints}
-        />
-        <StatCard
-          icon={BarChart3}
-          title="Avg Balance"
-          value={isLoadingStats ? "..." : currentTeacher.averageStudentBalance}
-          subtitle="Per student"
-          color="bg-gradient-to-br from-orange-500 to-red-500"
-          trend={trends.averageBalance}
-        />
+        {/* Stats Overview */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+          <StatCard
+            icon={Users}
+            title="Active Students"
+            value={isLoadingStats ? "..." : `${currentTeacher.activeStudents}/${currentTeacher.totalStudents}`}
+            subtitle="This week"
+            color="bg-gradient-to-br from-blue-500 to-cyan-600"
+            trend={trends.activeStudents}
+          />
+          <StatCard
+            icon={Coins}
+            title="Points Awarded"
+            value={isLoadingStats ? "..." : currentTeacher.totalPointsAwarded.toLocaleString()}
+            subtitle="All time"
+            color="bg-gradient-to-br from-green-500 to-emerald-600"
+            trend={trends.pointsAwarded}
+          />
+          <StatCard
+            icon={TrendingUp}
+            title="This Week"
+            value={isLoadingStats ? "..." : currentTeacher.thisWeekPoints}
+            subtitle="Points given"
+            color="bg-gradient-to-br from-purple-500 to-violet-600"
+            trend={trends.thisWeekPoints}
+          />
+          <StatCard
+            icon={BarChart3}
+            title="Avg Balance"
+            value={isLoadingStats ? "..." : currentTeacher.averageStudentBalance}
+            subtitle="Per student"
+            color="bg-gradient-to-br from-orange-500 to-red-500"
+            trend={trends.averageBalance}
+          />
+        </div>
 
         {/* Quick Actions */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
