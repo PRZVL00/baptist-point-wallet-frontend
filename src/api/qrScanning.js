@@ -21,16 +21,17 @@ export const getStudentByQR = async (qrValue) => {
  * Award points to a student
  * POST /students/award-points/
  */
-export const awardPointsToStudent = async (studentId, points, reason) => {
+export const awardPointsToStudent = async (studentId, points, reason, isDeduction = false) => {
   try {
     const response = await api.post('/students/award-points/', {
       student_id: studentId,
       points: points,
-      reason: reason
+      reason: reason,
+      is_deduction: isDeduction  // NEW PARAMETER
     });
     return response.data;
   } catch (error) {
-    console.error('Error awarding points:', error);
+    console.error('Error managing points:', error);
     throw error;
   }
 };

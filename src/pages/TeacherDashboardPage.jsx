@@ -170,7 +170,7 @@ const TeacherDashboardPage = () => {
 
   // Handle awarding points - send to backend
   // 6️⃣ UPDATE the awardPoints function (around line 122-175) - add this code after the success block:
-  const awardPoints = async () => {
+  const awardPoints = async (isDeductMode = false) => {
     if (!selectedStudent || !pointsToAward || !awardReason) {
       alert('Please fill in all fields');
       return;
@@ -184,10 +184,11 @@ const TeacherDashboardPage = () => {
       const result = await awardPointsToStudent(
         selectedStudent.id,
         pointsToAward,
-        awardReason
+        awardReason,
+        isDeductMode  // Pass the deduction mode
       );
 
-      console.log("✅ Points awarded successfully:", result);
+      console.log(`✅ Points ${isDeductMode ? 'deducted' : 'awarded'} successfully:`, result);
 
       // Update local student list with new balance
       setStudents(prev => prev.map(s =>
@@ -200,7 +201,7 @@ const TeacherDashboardPage = () => {
       const newTransaction = {
         id: result.transaction.id,
         studentName: selectedStudent.name,
-        type: 'earn',
+        type: isDeductMode ? 'spend' : 'earn',
         amount: pointsToAward,
         reason: awardReason,
         timestamp: 'Just now',
@@ -208,7 +209,7 @@ const TeacherDashboardPage = () => {
       };
       setRecentTransactions(prev => [newTransaction, ...prev.slice(0, 9)]);
 
-      // 🆕 ADD THIS: Refresh teacher stats from backend
+      // Refresh teacher stats from backend
       try {
         const statsData = await fetchTeacherStats();
         setCurrentTeacher({
@@ -227,12 +228,12 @@ const TeacherDashboardPage = () => {
       setPointsToAward(50);
       setAwardReason('');
 
-      alert(`✅ Successfully awarded ${pointsToAward} points to ${selectedStudent.name}!`);
+      alert(`✅ Successfully ${isDeductMode ? 'deducted' : 'awarded'} ${pointsToAward} points ${isDeductMode ? 'from' : 'to'} ${selectedStudent.name}!`);
 
     } catch (error) {
-      console.error("❌ Error awarding points:", error);
+      console.error(`❌ Error ${isDeductMode ? 'deducting' : 'awarding'} points:`, error);
 
-      const errorMessage = error.response?.data?.error || 'Failed to award points';
+      const errorMessage = error.response?.data?.error || `Failed to ${isDeductMode ? 'deduct' : 'award'} points`;
       alert(`Error: ${errorMessage}`);
     } finally {
       setIsAwarding(false);
